@@ -1,6 +1,7 @@
 import Matter from 'matter-js';
 import { RuleEngine, BASELINE } from './ruleEngine.js';
 import { soundEngine } from './soundEngine.js';
+import { interstellarEngine } from './interstellarEngine.js';
 
 export const SHAPE_COLORS = {
   red: {
@@ -180,6 +181,7 @@ export function createPhysicsWorld(canvas, options = {}) {
 
   // 3. Physics Simulation Hooks in beforeUpdate (Velocity Clamping + Viscous Fluid Drag & Buoyancy)
   Matter.Events.on(engine, 'beforeUpdate', () => {
+    interstellarEngine.updatePhysics(performance.now(), dynamicBodies, worldController, width, height);
     const bodies = Matter.Composite.allBodies(engine.world);
     const isOil = currentMedium === 'oil';
     const visc = currentViscosity;
@@ -452,6 +454,8 @@ export function createPhysicsWorld(canvas, options = {}) {
     spawnShimmerRings,
     triggerScreenShake,
     setMedium,
+    setPhenomenon: (type) => interstellarEngine.setPhenomenon(type),
+    getPhenomenon: () => interstellarEngine.getActivePhenomenon(),
     getDynamicBodies: () => dynamicBodies,
     onTelemetryUpdate: broadcastTelemetry,
   };
@@ -461,6 +465,7 @@ export function createPhysicsWorld(canvas, options = {}) {
 
   function resetWorld() {
     ruleEngine.clearAll();
+    interstellarEngine.clear();
 
     for (let i = 0; i < dynamicBodies.length; i++) {
       Matter.Composite.remove(engine.world, dynamicBodies[i]);
@@ -645,6 +650,9 @@ export function createPhysicsWorld(canvas, options = {}) {
       meshY[i] += meshVy[i];
       meshTension[i] *= (isOil ? 0.90 : 0.84);
     }
+
+    // Interstellar Spacetime Metric Warp (Gravitational Singularity Vortex / Wormhole Ripples)
+    interstellarEngine.applyMeshWarp(meshX, meshY, meshVx, meshVy, meshTension, totalNodes, width, height, now);
 
     // Body-Mesh Coupling: Any moving body within 110px pushes & drags surrounding fiber strands along velocity
     for (let b = 0; b < dynamicBodies.length; b++) {
@@ -891,6 +899,9 @@ export function createPhysicsWorld(canvas, options = {}) {
     // FOREGROUND SIMULATION RENDERING
     // -------------------------------------------------------------
 
+    // Interstellar Cosmic Phenomena Render Pass (Gargantua / Wormhole / Magnetar)
+    interstellarEngine.render(ctx, width, height, now);
+
     // Render Radial Force Animated Concentric Dashed Rings
     for (let r = 0; r < activeRules.length; r++) {
       const rule = activeRules[r];
@@ -1031,6 +1042,16 @@ export function createPhysicsWorld(canvas, options = {}) {
         ctx.globalAlpha = 1.0;
       }
 
+      // Tidal Spaghettification Transform (Relativistic stretching along singularity radial vector)
+      const isSpaghettified = Boolean(b.spaghettify && b.spaghettify.active);
+      if (isSpaghettified) {
+        ctx.save();
+        ctx.translate(b.position.x, b.position.y);
+        ctx.rotate(b.spaghettify.angle);
+        ctx.scale(b.spaghettify.stretch, b.spaghettify.compression);
+        ctx.translate(-b.position.x, -b.position.y);
+      }
+
       // Draw Primary Body Vertices
       const vertices = b.vertices;
       ctx.beginPath();
@@ -1073,6 +1094,24 @@ export function createPhysicsWorld(canvas, options = {}) {
       ctx.stroke();
 
       ctx.restore();
+
+      if (isSpaghettified) {
+        ctx.restore();
+      }
+
+      // Induced Magnetar Synchrotron Ionization Corona
+      if (b.beamIonized && b.beamIonized > 0.05) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.strokeStyle = `rgba(56, 189, 248, ${b.beamIonized.toFixed(2)})`;
+        ctx.lineWidth = 3;
+        ctx.shadowColor = '#38bdf8';
+        ctx.shadowBlur = 12;
+        const bRad = (b.circleRadius || b.customRadius || (b.customSize ? b.customSize / 2 : 20));
+        ctx.arc(b.position.x, b.position.y, bRad + 5, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
     }
 
     // Active drag constraint
@@ -1151,6 +1190,8 @@ export function createPhysicsWorld(canvas, options = {}) {
     setMedium,
     getMedium: () => currentMedium,
     getViscosity: () => currentViscosity,
+    setPhenomenon: (type) => interstellarEngine.setPhenomenon(type),
+    getPhenomenon: () => interstellarEngine.getActivePhenomenon(),
     addRule: (rule) => {
       const active = ruleEngine.addRule(rule);
       if (onRulesChanged) onRulesChanged(active);

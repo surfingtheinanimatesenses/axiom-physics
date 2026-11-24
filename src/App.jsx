@@ -1,8 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { createPhysicsWorld } from './engine/physicsWorld.js';
-import { PRESETS } from './engine/ruleEngine.js';
+import { INTERSTELLAR_PRESETS, BASELINE_PRESETS } from './engine/ruleEngine.js';
 import { soundEngine } from './engine/soundEngine.js';
-import CodexDrawer from './components/CodexDrawer.jsx';
 import {
   getStoredApiKey,
   setStoredApiKey,
@@ -30,7 +29,6 @@ import {
   ShieldAlert,
   Eye,
   EyeOff,
-  Sparkles,
 } from 'lucide-react';
 
 export default function App() {
@@ -58,7 +56,6 @@ export default function App() {
 
   // Inspector & Key Popover State
   const [isInspectorOpen, setIsInspectorOpen] = useState(false);
-  const [isCodexOpen, setIsCodexOpen] = useState(false);
   const [isKeyPopoverOpen, setIsKeyPopoverOpen] = useState(false);
   const [isKeyConfigured, setIsKeyConfigured] = useState(() => hasConfiguredApiKey());
   const [keyInput, setKeyInput] = useState('');
@@ -152,12 +149,11 @@ export default function App() {
     }
   }, []);
 
-  // Keyboard Shortcuts (Space: pause/resume, C: clear rules, R: reset bodies, E: toggle codex, Esc: close drawers)
+  // Keyboard Shortcuts (Space: pause/resume, C: clear rules, R: reset bodies, Esc: close popovers)
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
         setIsInspectorOpen(false);
-        setIsCodexOpen(false);
         setIsKeyPopoverOpen(false);
         return;
       }
@@ -176,34 +172,12 @@ export default function App() {
       } else if (e.key === 'r' || e.key === 'R') {
         e.preventDefault();
         handleReset();
-      } else if (e.key === 'e' || e.key === 'E') {
-        e.preventDefault();
-        setIsCodexOpen((prev) => !prev);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleTogglePause, handleClearAll, handleReset]);
-
-  // Codex Handlers (0ms local execution & prompt loading)
-  const handleExecuteCodexAbility = useCallback(
-    (ability) => {
-      if (!worldRef.current) return;
-      if (stackMode === 'REPLACE') {
-        worldRef.current.clearAllRules();
-      }
-      const updated = worldRef.current.addRule(ability.rules);
-      setActiveRules(updated);
-      setActiveLawStatus(`CODEX // ${ability.title}`);
-    },
-    [stackMode]
-  );
-
-  const handleLoadCodexPrompt = useCallback((promptText) => {
-    setCommandText(promptText);
-    setActiveLawStatus('PROMPT_LOADED // READY_TO_COMPILE');
-  }, []);
 
   // Offline Presets
   const applyPreset = useCallback(
@@ -399,7 +373,7 @@ export default function App() {
       </div>
       <div className="pointer-events-none absolute bottom-3 left-3 text-[10px] text-zinc-600 font-mono tracking-widest flex items-center gap-2">
         <span>ENGINE: MATTER-JS // GROQ // OSS-120B</span>
-        <span className="text-zinc-500 hidden md:inline">[SPACE: PAUSE] [C: CLEAR] [R: RESET] [E: CODEX]</span>
+        <span className="text-zinc-500 hidden md:inline">[SPACE: PAUSE] [C: CLEAR] [R: RESET]</span>
       </div>
       <div className="pointer-events-none absolute bottom-3 right-3 text-[10px] text-zinc-600 font-mono tracking-widest">
         STATUS: {activeLawStatus}
@@ -586,38 +560,10 @@ export default function App() {
               </span>
             </button>
 
-            {/* Codex Discoveries Toggle Button */}
-            <button
-              type="button"
-              onClick={() => {
-                setIsCodexOpen((prev) => {
-                  const next = !prev;
-                  if (next) setIsInspectorOpen(false);
-                  return next;
-                });
-              }}
-              className={`flex items-center gap-1.5 px-2 py-1 text-xs font-mono tracking-wider border transition-all cursor-pointer ${
-                isCodexOpen
-                  ? 'bg-amber-950/60 border-amber-500 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.25)]'
-                  : 'bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border-white/15 hover:border-amber-500/40'
-              }`}
-              title="Toggle Codex of 20 Physics Abilities & Cosmic Phenomena (Shortcut: E)"
-            >
-              <Sparkles className={`w-3 h-3 ${isCodexOpen ? 'text-amber-400' : 'text-amber-300/80'}`} />
-              <span>CODEX</span>
-              <span className="text-[9px] px-1 py-0.2 bg-zinc-950 border border-white/10 text-amber-400 font-bold">20</span>
-            </button>
-
             {/* JSON Inspector Toggle Button */}
             <button
               type="button"
-              onClick={() => {
-                setIsInspectorOpen((prev) => {
-                  const next = !prev;
-                  if (next) setIsCodexOpen(false);
-                  return next;
-                });
-              }}
+              onClick={() => setIsInspectorOpen(!isInspectorOpen)}
               className={`flex items-center gap-1 px-2 py-1 text-xs font-mono tracking-wider border transition-all cursor-pointer ${
                 isInspectorOpen
                   ? 'bg-cyan-950/60 border-cyan-500 text-cyan-300'
@@ -743,14 +689,6 @@ export default function App() {
         </div>
       )}
 
-      {/* 20 Physical Laws & Cosmic Phenomena Discovery Drawer */}
-      <CodexDrawer
-        isOpen={isCodexOpen}
-        onClose={() => setIsCodexOpen(false)}
-        onExecuteRules={handleExecuteCodexAbility}
-        onLoadPrompt={handleLoadCodexPrompt}
-      />
-
       {/* Live JSON Inspector Drawer */}
       <aside
         className={`fixed top-0 right-0 h-full w-84 max-w-[85vw] bg-zinc-950/90 backdrop-blur-xl border-l border-white/10 z-30 flex flex-col font-mono text-xs transition-transform duration-300 ease-in-out shadow-2xl ${
@@ -851,20 +789,50 @@ export default function App() {
       )}
 
       {/* Bottom Command Dock */}
-      <footer className="fixed bottom-4 left-1/2 -translate-x-1/2 z-20 w-full max-w-2xl px-4 flex flex-col gap-2">
-        {/* 5 Offline Presets (0ms Latency) */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
-          {PRESETS.map((preset) => (
-            <button
-              key={preset.id}
-              type="button"
-              onClick={() => applyPreset(preset)}
-              className="px-2 py-1 text-[10px] text-left truncate font-mono tracking-wider bg-zinc-950/80 hover:bg-zinc-900 border border-white/10 hover:border-white/30 text-zinc-400 hover:text-zinc-100 backdrop-blur-md active:translate-y-px transition-all cursor-pointer"
-              title={preset.description}
-            >
-              {preset.pillLabel}
-            </button>
-          ))}
+      <footer className="fixed bottom-4 left-1/2 -translate-x-1/2 z-20 w-full max-w-3xl px-4 flex flex-col gap-2">
+        {/* Options on top of input: Interstellar Phenomena & Baseline Laws */}
+        <div className="flex flex-col gap-1.5 w-full">
+          {/* Top Options: 3 Big Interstellar Blender-Level Phenomena */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
+            {INTERSTELLAR_PRESETS.map((p) => {
+              const isSelected = activeRules.some(
+                (r) => r.phenomenon === p.phenomenon || (r.raw && r.raw.phenomenon === p.phenomenon)
+              );
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => applyPreset(p)}
+                  className={`px-3 py-1.5 text-left font-mono tracking-wider border backdrop-blur-md transition-all cursor-pointer flex items-center justify-between text-xs active:translate-y-px ${
+                    isSelected
+                      ? 'bg-amber-950/70 border-amber-500 text-amber-200 shadow-[0_0_15px_rgba(245,158,11,0.25)]'
+                      : 'bg-zinc-950/85 hover:bg-zinc-900 border-white/15 hover:border-amber-500/50 text-zinc-300 hover:text-white'
+                  }`}
+                  title={p.description}
+                >
+                  <span className="font-semibold truncate">{p.pillLabel}</span>
+                  <span className="text-[9px] px-1 py-0.2 bg-zinc-900 border border-white/10 text-amber-400 font-bold shrink-0 ml-1">
+                    VFX
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Secondary Options: Classic Physical Laws */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+            {BASELINE_PRESETS.map((preset) => (
+              <button
+                key={preset.id}
+                type="button"
+                onClick={() => applyPreset(preset)}
+                className="px-2 py-1 text-[10px] text-left truncate font-mono tracking-wider bg-zinc-950/80 hover:bg-zinc-900 border border-white/10 hover:border-white/30 text-zinc-400 hover:text-zinc-100 backdrop-blur-md active:translate-y-px transition-all cursor-pointer"
+                title={preset.description}
+              >
+                {preset.pillLabel}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Sharp Command Input with Animated Cyan Border Pulse when Compiling */}

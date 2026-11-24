@@ -12,37 +12,88 @@ export const BASELINE = {
   scale: 1.0,
   medium: 'air',
   viscosity: 0.85,
+  phenomenon: 'none',
 };
 
 /**
- * Offline Presets (0ms latency, pure local JSON rule definitions)
+ * Interstellar-Grade Blender VFX Phenomena (Kip Thorne General Relativity & Astrophysics)
  */
-export const PRESETS = [
+export const INTERSTELLAR_PRESETS = [
   {
-    id: 'preset_black_hole',
-    pillLabel: 'LAW // BLACK-HOLE',
-    humanLabel: 'BLACK-HOLE // GOLD ATTRACTION',
-    description: 'Gold shapes strongly attract all shapes (0.0025) with low air friction',
+    id: 'preset_gargantua',
+    phenomenon: 'gargantua',
+    pillLabel: '🌌 GARGANTUA // BLACK HOLE',
+    humanLabel: 'GARGANTUA // KERR SINGULARITY',
+    description: 'Supermassive Kerr black hole with relativistic gravitational lensing, Doppler accretion disk & spaghettification',
     rules: [
       {
-        id: 'rule_bh_force',
-        type: 'radial_force',
-        label: 'GOLD ATTRACTION (0.0025)',
-        sourceColor: 'gold',
-        targetColor: 'all',
-        strength: 0.0025,
+        id: 'rule_gargantua_phenom',
+        type: 'set_phenomenon',
+        label: 'GARGANTUA // KERR BLACK HOLE',
+        phenomenon: 'gargantua',
       },
       {
-        id: 'rule_bh_friction',
-        type: 'mutate_bodies',
-        label: 'LOW AIR FRICTION (0.005)',
-        filter: { color: 'all', shape: 'all' },
-        restitution: 0.4,
-        frictionAir: 0.005,
-        scale: 1.0,
+        id: 'rule_gargantua_grav',
+        type: 'set_gravity',
+        label: 'MICRO-GRAVITY DILATION',
+        x: 0,
+        y: 0.05,
+        flipEveryMs: null,
       },
     ],
   },
+  {
+    id: 'preset_wormhole',
+    phenomenon: 'wormhole',
+    pillLabel: '🌀 ENDURANCE // WORMHOLE',
+    humanLabel: 'ENDURANCE // EINSTEIN-ROSEN BRIDGE',
+    description: 'Spherical 4D spacetime throat with celestial galaxy interior, chromatic dispersion & dimensional transit',
+    rules: [
+      {
+        id: 'rule_wormhole_phenom',
+        type: 'set_phenomenon',
+        label: 'ENDURANCE // EINSTEIN-ROSEN BRIDGE',
+        phenomenon: 'wormhole',
+      },
+      {
+        id: 'rule_wormhole_grav',
+        type: 'set_gravity',
+        label: 'WARP-SPACE ZERO-G',
+        x: 0,
+        y: 0,
+        flipEveryMs: null,
+      },
+    ],
+  },
+  {
+    id: 'preset_magnetar',
+    phenomenon: 'magnetar',
+    pillLabel: '⚡ MAGNETAR // PULSAR',
+    humanLabel: 'MAGNETAR // RELATIVISTIC PULSAR',
+    description: 'Ultra-dense spinning neutron star with sweeping synchrotron light cones, Lorentz force & starquakes',
+    rules: [
+      {
+        id: 'rule_magnetar_phenom',
+        type: 'set_phenomenon',
+        label: 'MAGNETAR // RELATIVISTIC PULSAR',
+        phenomenon: 'magnetar',
+      },
+      {
+        id: 'rule_magnetar_grav',
+        type: 'set_gravity',
+        label: 'MAGNETIC SUSPENSION',
+        x: 0,
+        y: 0.05,
+        flipEveryMs: null,
+      },
+    ],
+  },
+];
+
+/**
+ * Core Classic Physical Laws
+ */
+export const BASELINE_PRESETS = [
   {
     id: 'preset_pinball',
     pillLabel: 'LAW // ZERO-G PINBALL',
@@ -68,7 +119,6 @@ export const PRESETS = [
       },
     ],
     postAction: (world) => {
-      // Immediate random velocity kick to existing bodies
       const bodies = world.getDynamicBodies();
       for (let i = 0; i < bodies.length; i++) {
         const b = bodies[i];
@@ -104,6 +154,21 @@ export const PRESETS = [
     ],
   },
   {
+    id: 'preset_castrol_oil',
+    pillLabel: 'LAW // CASTROL-OIL',
+    humanLabel: 'CASTROL-OIL // VISCOUS FLUID',
+    description: 'Submerge simulation in Castrol-grade thick viscous motor oil (viscosity: 0.88)',
+    rules: [
+      {
+        id: 'rule_castrol_medium',
+        type: 'set_medium',
+        label: 'VISCOUS MEDIUM // CASTROL OIL (0.88)',
+        medium: 'oil',
+        viscosity: 0.88,
+      },
+    ],
+  },
+  {
     id: 'preset_gravity_flip',
     pillLabel: 'LAW // GRAVITY-FLIP',
     humanLabel: 'GRAVITY-FLIP // 2.5S INTERVAL',
@@ -127,22 +192,12 @@ export const PRESETS = [
       },
     ],
   },
-  {
-    id: 'preset_castrol_oil',
-    pillLabel: 'LAW // CASTROL-OIL',
-    humanLabel: 'CASTROL-OIL // VISCOUS FLUID',
-    description: 'Submerge simulation in Castrol-grade thick viscous motor oil (viscosity: 0.88)',
-    rules: [
-      {
-        id: 'rule_castrol_medium',
-        type: 'set_medium',
-        label: 'VISCOUS MEDIUM // CASTROL OIL (0.88)',
-        medium: 'oil',
-        viscosity: 0.88,
-      },
-    ],
-  },
 ];
+
+/**
+ * Complete Presets Collection
+ */
+export const PRESETS = [...INTERSTELLAR_PRESETS, ...BASELINE_PRESETS];
 
 /**
  * Deterministic Safe Rule Engine.
@@ -361,6 +416,10 @@ export class RuleEngine {
       this.world.setMedium(BASELINE.medium, BASELINE.viscosity);
     }
 
+    if (this.world.setPhenomenon) {
+      this.world.setPhenomenon(BASELINE.phenomenon || 'none');
+    }
+
     const dynamicBodies = this.world.getDynamicBodies();
     for (let i = 0; i < dynamicBodies.length; i++) {
       const b = dynamicBodies[i];
@@ -406,6 +465,13 @@ export class RuleEngine {
       case 'set_medium': {
         if (this.world.setMedium) {
           this.world.setMedium(rule.medium || 'oil', typeof rule.viscosity === 'number' ? rule.viscosity : 0.85);
+        }
+        break;
+      }
+
+      case 'set_phenomenon': {
+        if (this.world.setPhenomenon) {
+          this.world.setPhenomenon(rule.phenomenon || 'none');
         }
         break;
       }

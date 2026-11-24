@@ -76,21 +76,20 @@ CRITICAL DIRECTIVES:
      { "type": "spawn_wave", "shape": "box"|"circle"|"triangle", "color": "red"|"blue"|"green"|"gold", "count": integer (1 to 25) }
   6. set_medium:
      { "type": "set_medium", "medium": "air"|"oil", "viscosity": number (0.1 to 1.0) }
+  7. set_phenomenon:
+     { "type": "set_phenomenon", "phenomenon": "gargantua"|"wormhole"|"magnetar"|"none" }
 
 Enums:
 Colors: "red", "blue", "green", "gold", "all"
 Shapes: "box", "circle", "triangle", "all"
 Actions: "explode", "spawn_sparks", "destroy_b", "turn_gold"
 Mediums: "air", "oil"
+Phenomena: "gargantua", "wormhole", "magnetar", "none"
 
 Creative Physics Mapping Examples:
-- "solar system / central sun with orbiting planets" -> set_gravity (x: 0, y: 0), radial_force (sourceColor: "gold", targetColor: "all", strength: 0.0035), mutate_bodies (filter: { color: "gold" }, scale: 2.2, restitution: 0.1)
-- "neutron star with ultra dense gravity" -> radial_force (sourceColor: "gold", targetColor: "all", strength: 0.004), mutate_bodies (filter: { color: "gold" }, scale: 0.45, restitution: 0.05)
-- "black hole event horizon eats everything" -> radial_force (sourceColor: "gold", targetColor: "all", strength: 0.004), on_collision (colorA: "gold", colorB: "all", action: "destroy_b")
-- "antimatter pair annihilation" -> on_collision (colorA: "red", colorB: "blue", action: "explode")
-- "supernova core collapse and debris" -> on_collision (colorA: "gold", colorB: "gold", action: "explode"), spawn_wave (shape: "circle", color: "red", count: 18)
-- "quantum entangled dipoles" -> radial_force (sourceColor: "red", targetColor: "blue", strength: 0.0032), radial_force (sourceColor: "blue", targetColor: "blue", strength: -0.0025)
-- "absolute zero cryo freeze" -> mutate_bodies (filter: { color: "all", shape: "all" }, restitution: 0.02, frictionAir: 0.12), on_collision (colorA: "all", colorB: "all", action: "spawn_sparks")
+- "gargantua black hole / interstellar gravitational lensing" -> set_phenomenon (phenomenon: "gargantua"), set_gravity (x: 0, y: 0.05)
+- "endurance wormhole / einstein-rosen bridge" -> set_phenomenon (phenomenon: "wormhole"), set_gravity (x: 0, y: 0)
+- "magnetar pulsar / synchrotron radiation" -> set_phenomenon (phenomenon: "magnetar"), set_gravity (x: 0, y: 0.05)
 - "make them electronically charged" -> radial_force with strength: -0.0025 (electrostatic repulsion between shapes)
 - "magnetic pull between red and gold" -> radial_force with sourceColor: "gold", targetColor: "red", strength: 0.003
 - "submerge in thick motor oil" / "Castrol motor oil" -> set_medium with medium: "oil", viscosity: 0.88
@@ -193,7 +192,7 @@ export function sanitizeRules(rawRules) {
     let item = rawItem;
 
     if (!type) {
-      for (const candidate of ['set_gravity', 'mutate_bodies', 'radial_force', 'on_collision', 'spawn_wave', 'set_medium']) {
+      for (const candidate of ['set_gravity', 'mutate_bodies', 'radial_force', 'on_collision', 'spawn_wave', 'set_medium', 'set_phenomenon']) {
         if (rawItem[candidate] && typeof rawItem[candidate] === 'object') {
           type = candidate;
           item = { ...rawItem[candidate], type: candidate };
@@ -296,6 +295,19 @@ export function sanitizeRules(rawRules) {
           label: item.label || `MEDIUM // ${medium.toUpperCase()} (η=${Math.round(viscosity * 100)}%)`,
           medium,
           viscosity,
+        });
+        break;
+      }
+
+      case 'set_phenomenon': {
+        const rawP = typeof item.phenomenon === 'string' ? item.phenomenon.toLowerCase().trim() : 'none';
+        const validPhenom = ['gargantua', 'wormhole', 'magnetar', 'none'];
+        const phenomenon = validPhenom.includes(rawP) ? rawP : 'gargantua';
+
+        sanitized.push({
+          type: 'set_phenomenon',
+          label: item.label || `PHENOMENON // ${phenomenon.toUpperCase()}`,
+          phenomenon,
         });
         break;
       }

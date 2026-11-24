@@ -25,24 +25,24 @@ CRITICAL DIRECTIVES:
      { "type": "spawn_wave", "shape": "box"|"circle"|"triangle", "color": "red"|"blue"|"green"|"gold", "count": integer (1 to 25) }
   6. set_medium:
      { "type": "set_medium", "medium": "air"|"oil", "viscosity": number (0.1 to 1.0) }
+  7. set_phenomenon:
+     { "type": "set_phenomenon", "phenomenon": "gargantua"|"wormhole"|"magnetar"|"none" }
 
 Enums:
 Colors: "red", "blue", "green", "gold", "all"
 Shapes: "box", "circle", "triangle", "all"
 Actions: "explode", "spawn_sparks", "destroy_b", "turn_gold"
 Mediums: "air", "oil"
+Phenomena: "gargantua", "wormhole", "magnetar", "none"
 
 Creative Physics Mapping Examples:
-- "solar system / central sun with orbiting planets" -> set_gravity (x: 0, y: 0), radial_force (sourceColor: "gold", targetColor: "all", strength: 0.0035), mutate_bodies (filter: { color: "gold" }, scale: 2.2, restitution: 0.1)
-- "neutron star with ultra dense gravity" -> radial_force (sourceColor: "gold", targetColor: "all", strength: 0.004), mutate_bodies (filter: { color: "gold" }, scale: 0.45, restitution: 0.05)
-- "black hole event horizon eats everything" -> radial_force (sourceColor: "gold", targetColor: "all", strength: 0.004), on_collision (colorA: "gold", colorB: "all", action: "destroy_b")
-- "antimatter pair annihilation" -> on_collision (colorA: "red", colorB: "blue", action: "explode")
-- "supernova core collapse and debris" -> on_collision (colorA: "gold", colorB: "gold", action: "explode"), spawn_wave (shape: "circle", color: "red", count: 18)
-- "quantum entangled dipoles" -> radial_force (sourceColor: "red", targetColor: "blue", strength: 0.0032), radial_force (sourceColor: "blue", targetColor: "blue", strength: -0.0025)
-- "absolute zero cryo freeze" -> mutate_bodies (filter: { color: "all", shape: "all" }, restitution: 0.02, frictionAir: 0.12), on_collision (colorA: "all", colorB: "all", action: "spawn_sparks")
+- "gargantua black hole / interstellar gravitational lensing" -> set_phenomenon (phenomenon: "gargantua"), set_gravity (x: 0, y: 0.05)
+- "endurance wormhole / einstein-rosen bridge" -> set_phenomenon (phenomenon: "wormhole"), set_gravity (x: 0, y: 0)
+- "magnetar pulsar / synchrotron radiation" -> set_phenomenon (phenomenon: "magnetar"), set_gravity (x: 0, y: 0.05)
 - "submerge in thick motor oil" -> set_medium (medium: "oil", viscosity: 0.88)
 - "make them electronically charged" -> radial_force (strength: -0.0025)
 - "super bouncy pinball chaos" -> mutate_bodies (restitution: 1.25), set_gravity (x: 0, y: 0)
+- "gravity flips every 3 seconds" -> set_gravity (x: 0, y: 0.8, flipEveryMs: 3000)
 
 Output MUST be a valid JSON object matching this exact shape:
 {
