@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { createPhysicsWorld } from './engine/physicsWorld.js';
 import { PRESETS } from './engine/ruleEngine.js';
 import { soundEngine } from './engine/soundEngine.js';
+import CodexDrawer from './components/CodexDrawer.jsx';
 import {
   getStoredApiKey,
   setStoredApiKey,
@@ -29,6 +30,7 @@ import {
   ShieldAlert,
   Eye,
   EyeOff,
+  Sparkles,
 } from 'lucide-react';
 
 export default function App() {
@@ -56,6 +58,7 @@ export default function App() {
 
   // Inspector & Key Popover State
   const [isInspectorOpen, setIsInspectorOpen] = useState(false);
+  const [isCodexOpen, setIsCodexOpen] = useState(false);
   const [isKeyPopoverOpen, setIsKeyPopoverOpen] = useState(false);
   const [isKeyConfigured, setIsKeyConfigured] = useState(() => hasConfiguredApiKey());
   const [keyInput, setKeyInput] = useState('');
@@ -149,9 +152,16 @@ export default function App() {
     }
   }, []);
 
-  // Keyboard Shortcuts (Space: pause/resume, C: clear rules, R: reset bodies)
+  // Keyboard Shortcuts (Space: pause/resume, C: clear rules, R: reset bodies, E: toggle codex, Esc: close drawers)
   useEffect(() => {
     const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setIsInspectorOpen(false);
+        setIsCodexOpen(false);
+        setIsKeyPopoverOpen(false);
+        return;
+      }
+
       const tag = e.target?.tagName?.toLowerCase();
       if (tag === 'input' || tag === 'textarea' || e.target?.isContentEditable) {
         return; // Disabled while typing
@@ -166,12 +176,34 @@ export default function App() {
       } else if (e.key === 'r' || e.key === 'R') {
         e.preventDefault();
         handleReset();
+      } else if (e.key === 'e' || e.key === 'E') {
+        e.preventDefault();
+        setIsCodexOpen((prev) => !prev);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleTogglePause, handleClearAll, handleReset]);
+
+  // Codex Handlers (0ms local execution & prompt loading)
+  const handleExecuteCodexAbility = useCallback(
+    (ability) => {
+      if (!worldRef.current) return;
+      if (stackMode === 'REPLACE') {
+        worldRef.current.clearAllRules();
+      }
+      const updated = worldRef.current.addRule(ability.rules);
+      setActiveRules(updated);
+      setActiveLawStatus(`CODEX // ${ability.title}`);
+    },
+    [stackMode]
+  );
+
+  const handleLoadCodexPrompt = useCallback((promptText) => {
+    setCommandText(promptText);
+    setActiveLawStatus('PROMPT_LOADED // READY_TO_COMPILE');
+  }, []);
 
   // Offline Presets
   const applyPreset = useCallback(
@@ -367,7 +399,7 @@ export default function App() {
       </div>
       <div className="pointer-events-none absolute bottom-3 left-3 text-[10px] text-zinc-600 font-mono tracking-widest flex items-center gap-2">
         <span>ENGINE: MATTER-JS // GROQ // OSS-120B</span>
-        <span className="text-zinc-500 hidden md:inline">[SPACE: PAUSE] [C: CLEAR] [R: RESET]</span>
+        <span className="text-zinc-500 hidden md:inline">[SPACE: PAUSE] [C: CLEAR] [R: RESET] [E: CODEX]</span>
       </div>
       <div className="pointer-events-none absolute bottom-3 right-3 text-[10px] text-zinc-600 font-mono tracking-widest">
         STATUS: {activeLawStatus}
@@ -554,10 +586,38 @@ export default function App() {
               </span>
             </button>
 
+            {/* Codex Discoveries Toggle Button */}
+            <button
+              type="button"
+              onClick={() => {
+                setIsCodexOpen((prev) => {
+                  const next = !prev;
+                  if (next) setIsInspectorOpen(false);
+                  return next;
+                });
+              }}
+              className={`flex items-center gap-1.5 px-2 py-1 text-xs font-mono tracking-wider border transition-all cursor-pointer ${
+                isCodexOpen
+                  ? 'bg-amber-950/60 border-amber-500 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.25)]'
+                  : 'bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border-white/15 hover:border-amber-500/40'
+              }`}
+              title="Toggle Codex of 20 Physics Abilities & Cosmic Phenomena (Shortcut: E)"
+            >
+              <Sparkles className={`w-3 h-3 ${isCodexOpen ? 'text-amber-400' : 'text-amber-300/80'}`} />
+              <span>CODEX</span>
+              <span className="text-[9px] px-1 py-0.2 bg-zinc-950 border border-white/10 text-amber-400 font-bold">20</span>
+            </button>
+
             {/* JSON Inspector Toggle Button */}
             <button
               type="button"
-              onClick={() => setIsInspectorOpen(!isInspectorOpen)}
+              onClick={() => {
+                setIsInspectorOpen((prev) => {
+                  const next = !prev;
+                  if (next) setIsCodexOpen(false);
+                  return next;
+                });
+              }}
               className={`flex items-center gap-1 px-2 py-1 text-xs font-mono tracking-wider border transition-all cursor-pointer ${
                 isInspectorOpen
                   ? 'bg-cyan-950/60 border-cyan-500 text-cyan-300'
@@ -682,6 +742,14 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* 20 Physical Laws & Cosmic Phenomena Discovery Drawer */}
+      <CodexDrawer
+        isOpen={isCodexOpen}
+        onClose={() => setIsCodexOpen(false)}
+        onExecuteRules={handleExecuteCodexAbility}
+        onLoadPrompt={handleLoadCodexPrompt}
+      />
 
       {/* Live JSON Inspector Drawer */}
       <aside
