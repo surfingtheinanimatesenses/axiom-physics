@@ -103,8 +103,8 @@ Output MUST be a valid JSON object matching this exact shape:
 Never output dynamic JavaScript or markdown code blocks. Always map creative metaphors to the closest physical forces and properties.`;
 
 /**
- * Retrieves the stored Groq API key from localStorage, falling back to VITE_GROQ_API_KEY.
- * Never logs or exposes the key value.
+ * Retrieves the stored Groq API key strictly from the user's browser localStorage.
+ * Never bakes or bundles static secrets into client build artifacts.
  */
 export function getStoredApiKey() {
   if (typeof window !== 'undefined') {
@@ -112,11 +112,6 @@ export function getStoredApiKey() {
     if (local && local.trim().startsWith('gsk_')) {
       return local.trim();
     }
-  }
-
-  const envKey = import.meta.env?.VITE_GROQ_API_KEY;
-  if (envKey && typeof envKey === 'string' && envKey.trim().startsWith('gsk_')) {
-    return envKey.trim();
   }
 
   return '';
