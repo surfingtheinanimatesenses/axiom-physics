@@ -1,4 +1,4 @@
-# axiom-2d
+# Axiom-2d
 
 Explore whatever your imagination makes and make it happen <3
 
