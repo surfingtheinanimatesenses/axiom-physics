@@ -253,19 +253,8 @@ export default function App() {
         }
       }
 
-      // 2. Groq LLM Compilation with Multi-Tier Guardrails
+      // 2. Groq LLM Compilation with Multi-Tier Guardrails (Direct Key or Secure Serverless Gateway)
       const currentKey = getStoredApiKey();
-      if (!currentKey) {
-        setIsKeyPopoverOpen(true);
-        setActiveLawStatus('AUTH_REQUIRED // CONFIGURE_GROQ_KEY');
-        setErrorToast({
-          visible: true,
-          message: 'GROQ KEY REQUIRED — CONFIGURE IN TOP BAR',
-          isSecurity: false,
-        });
-        setTimeout(() => setErrorToast((prev) => ({ ...prev, visible: false })), 4000);
-        return;
-      }
 
       setIsCompiling(true);
       setActiveLawStatus('GUARDRAIL_SCAN // ANALYZING...');

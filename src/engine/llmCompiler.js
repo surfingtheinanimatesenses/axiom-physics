@@ -311,13 +311,50 @@ export function sanitizeRules(rawRules) {
  * @param {string} apiKey
  * @returns {Promise<{ summary: string, rules: Array<Object>, modelUsed: string, rawJson: string }>}
  */
-export async function compilePromptWithGroq(prompt, apiKey) {
-  if (!apiKey || !apiKey.startsWith('gsk_')) {
-    throw new Error('NO_API_KEY');
-  }
-
+export async function compilePromptWithGroq(prompt, apiKey = '') {
   // Tier 1: Client-Side Pre-Flight Input Guardrail
   validatePromptGuardrails(prompt);
+
+  // If no client API key is provided, attempt secure serverless gateway (/api/compile)
+  if (!apiKey || !apiKey.startsWith('gsk_')) {
+    try {
+      const res = await fetch('/api/compile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: prompt.trim() }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const summary = (data.summary || 'CUSTOM PHYSICAL LAW').toUpperCase().trim();
+        const rawRules = Array.isArray(data.rules) ? data.rules : [data.rules || data];
+        const sanitizedRules = sanitizeRules(rawRules);
+
+        if (sanitizedRules.length === 0) {
+          throw new Error('UNMAPPED_LAW: Could not map input to physics schemas. Try specifying forces, gravity, bounce, or collisions.');
+        }
+
+        return {
+          summary,
+          rules: sanitizedRules,
+          modelUsed: data.modelUsed || GROQ_MODELS.primary,
+          rawJson: JSON.stringify({ summary, rules: sanitizedRules }, null, 2),
+        };
+      }
+
+      if (res.status === 404 || res.status === 503) {
+        throw new Error('NO_API_KEY');
+      }
+
+      const errJson = await res.json().catch(() => ({}));
+      throw new Error(errJson.message || `HTTP_${res.status}`);
+    } catch (err) {
+      if (err.message === 'NO_API_KEY' || err.message?.includes('404')) {
+        throw new Error('NO_API_KEY');
+      }
+      throw err;
+    }
+  }
 
   const endpoint = 'https://api.groq.com/openai/v1/chat/completions';
 
