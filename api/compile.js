@@ -32,6 +32,18 @@ Shapes: "box", "circle", "triangle", "all"
 Actions: "explode", "spawn_sparks", "destroy_b", "turn_gold"
 Mediums: "air", "oil"
 
+Creative Physics Mapping Examples:
+- "solar system / central sun with orbiting planets" -> set_gravity (x: 0, y: 0), radial_force (sourceColor: "gold", targetColor: "all", strength: 0.0035), mutate_bodies (filter: { color: "gold" }, scale: 2.2, restitution: 0.1)
+- "neutron star with ultra dense gravity" -> radial_force (sourceColor: "gold", targetColor: "all", strength: 0.004), mutate_bodies (filter: { color: "gold" }, scale: 0.45, restitution: 0.05)
+- "black hole event horizon eats everything" -> radial_force (sourceColor: "gold", targetColor: "all", strength: 0.004), on_collision (colorA: "gold", colorB: "all", action: "destroy_b")
+- "antimatter pair annihilation" -> on_collision (colorA: "red", colorB: "blue", action: "explode")
+- "supernova core collapse and debris" -> on_collision (colorA: "gold", colorB: "gold", action: "explode"), spawn_wave (shape: "circle", color: "red", count: 18)
+- "quantum entangled dipoles" -> radial_force (sourceColor: "red", targetColor: "blue", strength: 0.0032), radial_force (sourceColor: "blue", targetColor: "blue", strength: -0.0025)
+- "absolute zero cryo freeze" -> mutate_bodies (filter: { color: "all", shape: "all" }, restitution: 0.02, frictionAir: 0.12), on_collision (colorA: "all", colorB: "all", action: "spawn_sparks")
+- "submerge in thick motor oil" -> set_medium (medium: "oil", viscosity: 0.88)
+- "make them electronically charged" -> radial_force (strength: -0.0025)
+- "super bouncy pinball chaos" -> mutate_bodies (restitution: 1.25), set_gravity (x: 0, y: 0)
+
 Output MUST be a valid JSON object matching this exact shape:
 {
   "summary": "3-5 WORD UPPERCASE TITLE",
