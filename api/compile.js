@@ -112,54 +112,92 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'PROMPT_TOO_LONG', message: 'Prompt exceeds 250 characters limit.' });
   }
 
-  // 4. Secure API Key Retrieval
-  const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey || !apiKey.startsWith('gsk_')) {
+  // 4. Secure API Key Pool & Auto-Rotation (Load Balancing + 429 Failover)
+  const rawKeys = process.env.GROQ_API_KEYS || process.env.GROQ_API_KEY || '';
+  const keyPool = rawKeys
+    .split(/[\s,]+/)
+    .map((k) => k.trim())
+    .filter((k) => k.startsWith('gsk_'));
+
+  if (keyPool.length === 0) {
     return res.status(503).json({
       error: 'SERVER_KEY_NOT_CONFIGURED',
-      message: 'Server GROQ_API_KEY is not configured yet in environment variables.',
+      message: 'Server GROQ_API_KEYS is not configured yet in environment variables.',
     });
   }
 
-  // 5. Call Groq with Automatic Fallback (Primary: 120b, Fallback: 20b)
+  // 5. Call Groq with Multi-Key Rotation & Automatic Model Fallback
   const endpoint = 'https://api.groq.com/openai/v1/chat/completions';
   const userContent = `<user_physics_input>\n${cleanPrompt}\n</user_physics_input>`;
 
-  async function callGroq(model) {
-    return await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: userContent },
-        ],
-        response_format: { type: 'json_object' },
-        reasoning_effort: 'low',
-        max_completion_tokens: 1500,
-        temperature: 0.15,
-      }),
-    });
+  async function executeWithKeyRotation(model) {
+    // Start at a random key index to evenly balance load across all 4 keys
+    const startIndex = Math.floor(Math.random() * keyPool.length);
+    let lastResponse = null;
+
+    for (let attempt = 0; attempt < keyPool.length; attempt++) {
+      const activeKey = keyPool[(startIndex + attempt) % keyPool.length];
+
+      try {
+        const groqRes = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${activeKey}`,
+          },
+          body: JSON.stringify({
+            model,
+            messages: [
+              { role: 'system', content: SYSTEM_PROMPT },
+              { role: 'user', content: userContent },
+            ],
+            response_format: { type: 'json_object' },
+            reasoning_effort: 'low',
+            max_completion_tokens: 1500,
+            temperature: 0.15,
+          }),
+        });
+
+        // If successful, return immediately
+        if (groqRes.ok) {
+          return groqRes;
+        }
+
+        lastResponse = groqRes;
+
+        // If rate-limited (429) or temporary 5xx, continue to next key in pool
+        if (groqRes.status === 429 || groqRes.status >= 500) {
+          continue;
+        }
+
+        // If authentication error (e.g. invalid key 401), try next key
+        if (groqRes.status === 401) {
+          continue;
+        }
+      } catch {
+        // Network blip, continue to next key
+        continue;
+      }
+    }
+
+    return lastResponse;
   }
 
   try {
     let modelUsed = 'openai/gpt-oss-120b';
-    let groqRes = await callGroq(modelUsed);
+    let groqRes = await executeWithKeyRotation(modelUsed);
 
-    if (groqRes.status === 429 || groqRes.status >= 500) {
+    // If all keys rate limited on 120b, fallback to 20b across key pool
+    if (!groqRes || groqRes.status === 429 || groqRes.status >= 500) {
       modelUsed = 'openai/gpt-oss-20b';
-      groqRes = await callGroq(modelUsed);
+      groqRes = await executeWithKeyRotation(modelUsed);
     }
 
-    if (!groqRes.ok) {
-      const errText = await groqRes.text().catch(() => '');
-      return res.status(groqRes.status).json({
-        error: `GROQ_UPSTREAM_${groqRes.status}`,
-        message: errText || groqRes.statusText,
+    if (!groqRes || !groqRes.ok) {
+      const errText = groqRes ? await groqRes.text().catch(() => '') : 'All API keys failed';
+      return res.status(groqRes ? groqRes.status : 502).json({
+        error: `GROQ_UPSTREAM_${groqRes ? groqRes.status : 'FAILED'}`,
+        message: errText,
       });
     }
 
